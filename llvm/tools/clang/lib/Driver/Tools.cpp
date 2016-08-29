@@ -4151,7 +4151,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   if (Args.hasFlag(options::OPT_mrtd, options::OPT_mno_rtd, false))
     CmdArgs.push_back("-fdefault-calling-conv=stdcall");
 
-  if (shouldUseFramePointer(Args, getToolChain().getTriple()))
+  // if (shouldUseFramePointer(Args, getToolChain().getTriple()))
     CmdArgs.push_back("-mdisable-fp-elim");
   if (!Args.hasFlag(options::OPT_fzero_initialized_in_bss,
                     options::OPT_fno_zero_initialized_in_bss))
@@ -4491,8 +4491,10 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back(A->getValue());
   }
 
+  /*
   if (!shouldUseLeafFramePointer(Args, getToolChain().getTriple()))
     CmdArgs.push_back("-momit-leaf-frame-pointer");
+    */
 
   // Explicitly error on some things we know we don't support and can't just
   // ignore.
@@ -4600,6 +4602,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
                                     getToolChain().GetDefaultStandaloneDebug());
   if (DebugInfoKind == codegenoptions::LimitedDebugInfo && NeedFullDebug)
     DebugInfoKind = codegenoptions::FullDebugInfo;
+  DebugInfoKind = codegenoptions::NoDebugInfo;
   RenderDebugEnablingArgs(Args, CmdArgs, DebugInfoKind, DwarfVersion,
                           DebuggerTuning);
 

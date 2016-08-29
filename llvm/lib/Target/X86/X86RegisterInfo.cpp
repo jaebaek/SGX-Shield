@@ -526,6 +526,28 @@ BitVector X86RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
     }
   }
 
+  // Jaebaek: reserve R15, R14, R13, RBP for Soft-DEP, SFI
+  // R15 = DEP boundary
+  Reserved.set(X86::R15);
+  Reserved.set(X86::R15D);
+  Reserved.set(X86::R15W);
+  Reserved.set(X86::R15B);
+  // R14 = SFI boundary
+  Reserved.set(X86::R14);
+  Reserved.set(X86::R14D);
+  Reserved.set(X86::R14W);
+  Reserved.set(X86::R14B);
+  // R13 is a temporary register used for masking
+  Reserved.set(X86::R13);
+  Reserved.set(X86::R13D);
+  Reserved.set(X86::R13W);
+  Reserved.set(X86::R13B);
+
+  Reserved.set(X86::RBP);
+  Reserved.set(X86::EBP);
+  Reserved.set(X86::BP);
+  Reserved.set(X86::BPL);
+
   return Reserved;
 }
 

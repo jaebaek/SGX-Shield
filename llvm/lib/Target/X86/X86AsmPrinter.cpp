@@ -49,6 +49,9 @@ using namespace llvm;
 bool X86AsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   Subtarget = &MF.getSubtarget<X86Subtarget>();
 
+  IC.reset(MF);
+  units = 0;
+
   SMShadowTracker.startFunction(MF);
   CodeEmitter.reset(TM.getTarget().createMCCodeEmitter(
       *MF.getSubtarget().getInstrInfo(), *MF.getSubtarget().getRegisterInfo(),
@@ -66,8 +69,18 @@ bool X86AsmPrinter::runOnMachineFunction(MachineFunction &MF) {
     OutStreamer->EndCOFFSymbolDef();
   }
 
+  /* Jaebaek: align functions along 32 byte boundary */
+  if (MF.getAlignment() < 5)
+    MF.setAlignment(5);
+  for (MachineFunction::iterator I = MF.begin(), E = MF.end();I != E; ++I) {
+    MachineBasicBlock &MBB = *I;
+    MBB.setAlignment(0);
+  }
+
   // Emit the rest of the function body.
   EmitFunctionBody();
+
+  IC.free();
 
   // Emit the XRay table for this function.
   EmitXRayTable();

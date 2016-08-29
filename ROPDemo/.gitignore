@@ -1,0 +1,11 @@
+*
+!.gitignore
+!*.cpp
+!*.h
+!*.c
+!Makefile
+!README.txt
+!*.edl
+*_u.*
+*_t.*
+!*/

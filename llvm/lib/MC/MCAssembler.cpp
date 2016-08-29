@@ -188,6 +188,9 @@ bool MCAssembler::evaluateFixup(const MCAsmLayout &Layout,
 
   bool IsResolved;
   if (IsPCRel) {
+    /*
+     * Jaebaek: add relocation entries for BasicBlocks
+     *
     if (Target.getSymB()) {
       IsResolved = false;
     } else if (!Target.getSymA()) {
@@ -202,6 +205,8 @@ bool MCAssembler::evaluateFixup(const MCAsmLayout &Layout,
             *this, SA, *DF, false, true);
       }
     }
+     */
+    IsResolved = false;
   } else {
     IsResolved = Target.isAbsolute();
   }

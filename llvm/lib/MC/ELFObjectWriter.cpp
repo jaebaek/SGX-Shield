@@ -687,7 +687,7 @@ void ELFObjectWriter::recordRelocation(MCAssembler &Asm,
 
   unsigned Type = getRelocType(Ctx, Target, Fixup, IsPCRel);
   uint64_t OriginalC = C;
-  bool RelocateWithSymbol = shouldRelocateWithSymbol(Asm, RefA, SymA, C, Type);
+  bool RelocateWithSymbol = true; //shouldRelocateWithSymbol(Asm, RefA, SymA, C, Type);
   if (!RelocateWithSymbol && SymA && !SymA->isUndefined())
     C += Layout.getSymbolOffset(*SymA);
 

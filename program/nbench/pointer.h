@@ -1,0 +1,1 @@
+#define LONG64

@@ -68,6 +68,7 @@ TODO
 - Debugging the program with non-enclave mode.
 - How to add ocalls.
 - ptrace/rop_attack mode.
+- Add Windows version.
 
 ###Optimization
 - Improve software-DEP loop optimization.

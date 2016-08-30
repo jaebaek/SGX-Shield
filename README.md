@@ -72,3 +72,6 @@ TODO
 
 ###Optimization
 - Improve software-DEP loop optimization.
+
+###Etc.
+- Port "[Graphene Library OS](https://github.com/oscarlab/graphene)" to SGX-Shield.

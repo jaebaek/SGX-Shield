@@ -8,3 +8,7 @@ Documentation
 
 Optimization
 - Improve software-DEP loop optimization.
+
+Etc.
+- Port "Graphene Library OS" to SGX-Shield.
+(https://github.com/oscarlab/graphene)

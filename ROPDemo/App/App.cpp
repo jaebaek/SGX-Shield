@@ -192,6 +192,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    printf("Give the base address of enclave in hex number: ");
     scanf("%lx", &base);
     /* Call enclave main */
     enclave_main(eid);

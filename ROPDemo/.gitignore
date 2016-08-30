@@ -3,9 +3,13 @@
 !*.cpp
 !*.h
 !*.c
+!*.s
 !Makefile
 !README.txt
 !*.edl
+!*.xml
+!*.lds
+!*.pem
 *_u.*
 *_t.*
 !*/

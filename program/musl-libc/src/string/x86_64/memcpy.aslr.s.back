@@ -1,0 +1,32 @@
+.global memcpy
+.type memcpy,@function
+memcpy:
+	mov %rdi,%rax
+	cmp $8,%rdx
+	jc 1f
+    jmp BB0		# instrumented
+BB0:		# instrumented
+	test $7,%edi
+	jz 1f
+    jmp 2f		# instrumented
+2:
+	movsb
+	dec %rdx
+	test $7,%edi
+	jnz 2b
+    jmp 1f		# instrumented
+1:
+	mov %rdx,%rcx
+	shr $3,%rcx
+	rep
+	movsq
+	and $7,%edx
+	jz 1f
+    jmp 2f		# instrumented
+2:
+	movsb
+	dec %edx
+	jnz 2b
+    jmp 1f		# instrumented
+1:
+	ret

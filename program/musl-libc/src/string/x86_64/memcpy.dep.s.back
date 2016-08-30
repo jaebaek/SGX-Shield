@@ -1,0 +1,44 @@
+.bundle_align_mode 6
+.global memcpy
+.type memcpy,@function
+memcpy:
+    .p2align    6, 0x90
+	mov %rdi,%rax
+	cmp $8,%rdx
+	jc 1f
+    jmp BB0		# instrumented
+BB0:		# instrumented
+    .p2align    6, 0x90
+	test $7,%edi
+	jz 1f
+    jmp 2f		# instrumented
+2:
+    .p2align    6, 0x90
+	movsb
+	dec %rdx
+	test $7,%edi
+	jnz 2b
+    jmp 1f		# instrumented
+1:
+    .p2align    6, 0x90
+	mov %rdx,%rcx
+	shr $3,%rcx
+	rep
+	movsq
+	and $7,%edx
+	jz 1f
+    jmp 2f		# instrumented
+2:
+    .p2align    6, 0x90
+	movsb
+	dec %edx
+	jnz 2b
+    jmp 1f		# instrumented
+1:
+    .p2align    6, 0x90
+    .bundle_lock
+    cmpq    $sfi.boundary, (%rsp)
+    jl      sfi.fault
+    andb    $-64, (%rsp)
+	ret
+    .bundle_unlock

@@ -1,0 +1,147 @@
+.bundle_align_mode 6
+.global memset
+.type memset,@function
+memset:
+    .p2align    6, 0x90
+	and $0xff,%esi
+	mov $0x101010101010101,%rax
+	mov %rdx,%rcx
+	mov %rdi,%r8
+	imul %rsi,%rax
+	cmp $16,%rcx
+	jb 1f
+    jmp BB0		# instrumented
+BB0:		# instrumented
+    .p2align    6, 0x90
+    .bundle_lock
+    pushfq
+    pushq   %rax  
+    leaq    -8(%rdi,%rcx), %rax
+    cmpq    $dep.boundary, %rax
+    jl      dep.fault
+    popq    %rax  
+    popfq 
+	mov %rax,-8(%rdi,%rcx)
+    .bundle_unlock
+	shr $3,%rcx
+	rep
+	stosq
+	mov %r8,%rax
+    .bundle_lock
+    cmpq    $sfi.boundary, (%rsp)
+    jl      sfi.fault
+    andb    $-64, (%rsp)
+	ret
+    .bundle_unlock
+1:
+    .p2align    6, 0x90
+	test %ecx,%ecx
+	jz 1f
+    jmp BB1		# instrumented
+BB1:		# instrumented
+    .p2align    6, 0x90
+    .bundle_lock
+    pushfq
+    pushq   %rax  
+    leaq    (%rdi), %rax
+    cmpq    $dep.boundary, %rax
+    jl      dep.fault
+    popq    %rax  
+    popfq 
+	mov %al,(%rdi)
+    .bundle_unlock
+    .bundle_lock
+    pushfq
+    pushq   %rax  
+    leaq    -1(%rdi,%rcx), %rax
+    cmpq    $dep.boundary, %rax
+    jl      dep.fault
+    popq    %rax  
+    popfq 
+	mov %al,-1(%rdi,%rcx)
+    .bundle_unlock
+	cmp $2,%ecx
+	jbe 1f
+    jmp BB2		# instrumented
+BB2:		# instrumented
+    .p2align    6, 0x90
+    .bundle_lock
+    pushfq
+    pushq   %rax  
+    leaq    1(%rdi), %rax
+    cmpq    $dep.boundary, %rax
+    jl      dep.fault
+    popq    %rax  
+    popfq 
+	mov %al,1(%rdi)
+    .bundle_unlock
+    .bundle_lock
+    pushfq
+    pushq   %rax  
+    leaq    -2(%rdi,%rcx), %rax
+    cmpq    $dep.boundary, %rax
+    jl      dep.fault
+    popq    %rax  
+    popfq 
+	mov %al,-2(%rdi,%rcx)
+    .bundle_unlock
+	cmp $4,%ecx
+	jbe 1f
+    jmp BB3		# instrumented
+BB3:		# instrumented
+    .p2align    6, 0x90
+    .bundle_lock
+    pushfq
+    pushq   %rax  
+    leaq    (%rdi), %rax
+    cmpq    $dep.boundary, %rax
+    jl      dep.fault
+    popq    %rax  
+    popfq 
+	mov %eax,(%rdi)
+    .bundle_unlock
+    .bundle_lock
+    pushfq
+    pushq   %rax  
+    leaq    -4(%rdi,%rcx), %rax
+    cmpq    $dep.boundary, %rax
+    jl      dep.fault
+    popq    %rax  
+    popfq 
+	mov %eax,-4(%rdi,%rcx)
+    .bundle_unlock
+	cmp $8,%ecx
+	jbe 1f
+    jmp BB4		# instrumented
+BB4:		# instrumented
+    .p2align    6, 0x90
+    .bundle_lock
+    pushfq
+    pushq   %rax  
+    leaq    4(%rdi), %rax
+    cmpq    $dep.boundary, %rax
+    jl      dep.fault
+    popq    %rax  
+    popfq 
+	mov %eax,4(%rdi)
+    .bundle_unlock
+    .bundle_lock
+    pushfq
+    pushq   %rax  
+    leaq    -8(%rdi,%rcx), %rax
+    cmpq    $dep.boundary, %rax
+    jl      dep.fault
+    popq    %rax  
+    popfq 
+	mov %eax,-8(%rdi,%rcx)
+    .bundle_unlock
+    jmp 1f		# instrumented
+1:
+    .p2align    6, 0x90
+	mov %r8,%rax
+    .bundle_lock
+    cmpq    $sfi.boundary, (%rsp)
+    jl      sfi.fault
+    andb    $-64, (%rsp)
+	ret
+    .bundle_unlock

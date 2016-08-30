@@ -1,0 +1,15 @@
+.global remainderl
+.type remainderl,@function
+remainderl:
+	fldt 24(%rsp)
+	fldt 8(%rsp)
+    jmp 1f		# instrumented
+1:
+	fprem1
+	fstsw %ax
+	testb $4,%ah
+	jnz 1b
+    jmp BB0		# instrumented
+BB0:		# instrumented
+	fstp %st(1)
+	ret

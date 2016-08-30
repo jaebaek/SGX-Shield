@@ -1,7 +1,7 @@
 BASE_CFLAGS = -Wall -pedantic -Wno-unused-function -std=gnu11
 
 # SGX LIB
-LIBCDIR = ../../libsgx/musl-libc/
+LIBCDIR = musl-libc
 SGX_CFLAGS = $(BASE_CFLAGS) -I$(LIBCDIR)/include \
              -fno-stack-protector -fvisibility=hidden
 
@@ -11,9 +11,6 @@ STATIC_NOLIBC_FLAG = -nostdlib -nostartfiles
 
 OCALL_OBJS_DIR = lib/
 OCALL_LIB_MK = lib/ocall.mk
-$(OCALL_LIB_MK):
-	$(shell cd $(OCALL_OBJS_DIR); ./gen_ocall_stub.py)
-include $(OCALL_LIB_MK)
 
 ASM_OBJS = lib/stack.o lib/start.o lib/rop_gadget.o \
 		   lib/code_inject.o lib/ocall.o lib/rand.o
@@ -24,22 +21,36 @@ LIBGCC = libgcc/ashldi3.o libgcc/ashrdi3.o libgcc/__divide_error.o 	\
 		 libgcc/__udivmoddi4.o libgcc/__udivmodti4.o 				\
 		 libgcc/__udivti3.o libgcc/__umoddi3.o libgcc/__umodti3.o
 
-all: program nben
+all: $(LIBC) $(OCALL_LIB_MK) program
 
-https: program
-	$(MAKE) -C mbedtls
+$(OCALL_LIB_MK):
+	$(shell cd $(OCALL_OBJS_DIR); ./gen_ocall_stub.py)
+include $(OCALL_LIB_MK)
+
+$(LIBC):
+	(cd musl-libc; ./configure)
+	make -C musl-libc lib/libc.a
+
+https: program $(LIBSSL)
 	cp mbedtls/*.o objs
 	echo '' > objs/in_enclave_test.o
 	rm objs/in_enclave_test.o
 	ls objs/*.o > list
 	cat list | ./tools/linker https
 
-nben: program
-	$(MAKE) -C nbench nbench.a
+LIBSSL = mbedtls/libmbedtls.a
+$(LIBSSL):
+	$(MAKE) -C mbedtls
+
+nben: program $(LIBNBENCH)
 	cp nbench/*.o objs
 	rm objs/in_enclave_test.o
 	ls objs/*.o > list
 	cat list | ./tools/linker nben
+
+LIBNBENCH = nbench/nbench.a
+$(LIBNBENCH):
+	$(MAKE) -C nbench nbench.a
 
 program: objs/libc-aslr.a tools/linker $(OCALL_OBJS) $(ASM_OBJS) $(LIBGCC)
 	cp lib/*.o objs
@@ -71,5 +82,10 @@ in_enclave_test.o: in_enclave_test.c $(BENCHMARK) enclave.h
 clean:
 	rm -f *.o *.a objs/*.o objs/*.a list program nben \
 		tools/linker lib/*.o
+
+clean-all:
+	rm -f *.o *.a objs/*.o objs/*.a list program nben \
+		tools/linker lib/*.o
+	rm $(OCALL_OBJS) $(OCALL_LIB_MK)
 	$(MAKE) -C nbench clean
 	$(MAKE) -C mbedtls clean

@@ -12,6 +12,10 @@ STATIC_NOLIBC_FLAG = -nostdlib -nostartfiles
 OCALL_OBJS_DIR = lib/
 OCALL_LIB_MK = lib/ocall.mk
 
+#$(OCALL_LIB_MK):
+#	$(shell cd $(OCALL_OBJS_DIR); ./gen_ocall_stub.py)
+include $(OCALL_LIB_MK)
+
 ASM_OBJS = lib/stack.o lib/start.o lib/rop_gadget.o \
 		   lib/code_inject.o lib/ocall.o lib/rand.o
 
@@ -21,11 +25,7 @@ LIBGCC = libgcc/ashldi3.o libgcc/ashrdi3.o libgcc/__divide_error.o 	\
 		 libgcc/__udivmoddi4.o libgcc/__udivmodti4.o 				\
 		 libgcc/__udivti3.o libgcc/__umoddi3.o libgcc/__umodti3.o
 
-all: $(LIBC) $(OCALL_LIB_MK) program
-
-$(OCALL_LIB_MK):
-	$(shell cd $(OCALL_OBJS_DIR); ./gen_ocall_stub.py)
-include $(OCALL_LIB_MK)
+all: $(LIBC) program
 
 $(LIBC):
 	(cd musl-libc; ./configure)
@@ -86,6 +86,5 @@ clean:
 clean-all:
 	rm -f *.o *.a objs/*.o objs/*.a list program nben \
 		tools/linker lib/*.o
-	rm $(OCALL_OBJS) $(OCALL_LIB_MK)
 	$(MAKE) -C nbench clean
 	$(MAKE) -C mbedtls clean

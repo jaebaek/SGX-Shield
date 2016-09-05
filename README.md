@@ -4,8 +4,7 @@
 Introduction
 ------------
 Hello! SGX-Shield is a system supporting ASLR in the SGX environment.
-Currently, we submitted a paper based on this project in NDSS 2017.
-The paper will be attached (if successfully published).
+The paper is still under review for publication.
 
 All implementations for this project (except the existing code base like LLVM)
 is done by Jaebaek Seo (jaebaek at kaist dot ac dot kr).

@@ -23,6 +23,33 @@ using namespace llvm;
 #include <vector>
 using namespace std;
 
+/*
+ * Jaebaek: An assumption for efficient instrumentation:
+ * The base address of an enclave is aligned with upperPowerOf2(size_of_enclave)
+ * (e.g., 32MB aligned for 30MB enclave).
+ * Based on this assumption, the following instrumentation is allowed:
+
+    Before ..
+       sub  0x120, %rsp
+    After ..
+       sub  0x120, %esp
+       sub  %r15d, %esp
+       lea  (%rsp, %r15, 1), %rsp
+
+    which is same with ..
+       sub  0x120, %rsp
+       sub  %r15, %rsp
+       mov  %esp, %esp
+       lea  (%rsp, %r15, 1), %rsp
+
+ * This is because there is no case s.t. R15 < 4GB-boundary <= RSP
+ * i.e., always 4GB-boundary <= R15 <= RSP <= 4GB-boundary
+
+       sub  0x120, %esp --> if under-flow occurs, rsp - 0x120 < r15
+       sub  %r15d, %esp --> under-flow does not occur if r15 <= rsp
+       lea  (%rsp, %r15, 1), %rsp
+ */
+
 namespace {
   struct X86SGXASLR : public MachineFunctionPass {
     public:
@@ -196,8 +223,7 @@ static bool MatchesSPAdj(const MachineInstr &MI) {
 
 /*
    MBBI
-   sub  %r15, %rX
-   mov  %eX, %eX
+   sub  %r15d, %rXd
    lea  (%rX, %r15, 1), %rX
 
    make above instructions as a bundle
@@ -214,10 +240,8 @@ static void resetRXBasedOnRZP(unsigned rX, MachineBasicBlock &MBB,
     .addImm(1).addReg(X86::R15).addImm(0).addReg(0);
   MachineBasicBlock::iterator LEAI = LEA;
 
-  BuildMI(MBB, LEAI, DL, TII->get(X86::SUB64rr), rX)
-    .addReg(rX).addReg(X86::R15);
-
-  BuildMI(MBB, LEAI, DL, TII->get(X86::MOV32rr)).addReg(rX32).addReg(rX32);
+  BuildMI(MBB, LEAI, DL, TII->get(X86::SUB32rr), rX32)
+    .addReg(rX32).addReg(X86::R15D);
 
   MIBundleBuilder(MBB, MBBI, ++LEAI);
   finalizeBundle(MBB, MBBI.getInstrIterator());
@@ -246,7 +270,7 @@ bool X86SGXASLR::enforceRSPGreatOrEqualtoR15(MachineBasicBlock &MBB,
        before:
          sub  A, %rsp
        after:
-         sub  %r15, %rsp
+         sub  %r15d, %esp
          sub  A, %esp
          lea  (%rsp, %r15, 1), %rsp
     */
@@ -254,8 +278,8 @@ bool X86SGXASLR::enforceRSPGreatOrEqualtoR15(MachineBasicBlock &MBB,
     case X86::SUB64ri32: {
       unsigned tmpOpc = (Opc == X86::SUB64ri8) ? X86::SUB32ri8 : X86::SUB32ri;
       MachineInstr *subMI
-        = BuildMI(MBB, MBBI, DL, TII->get(X86::SUB64rr), X86::RSP)
-        .addReg(X86::RSP).addReg(X86::R15);
+        = BuildMI(MBB, MBBI, DL, TII->get(X86::SUB32rr), X86::ESP)
+        .addReg(X86::ESP).addReg(X86::R15D);
       MachineBasicBlock::iterator SUBI = subMI;
 
       BuildMI(MBB, MBBI, DL, TII->get(tmpOpc), X86::ESP)
@@ -290,6 +314,10 @@ bool X86SGXASLR::enforceRSPGreatOrEqualtoR15(MachineBasicBlock &MBB,
     case X86::AND64ri8:
     case X86::AND64ri32: {
       addedBundleHeader = MBBI;
+      unsigned tmpOpc = (Opc == X86::AND64ri8) ? X86::AND32ri8 : X86::AND32ri;
+      MI.setDesc(TII->get(tmpOpc));
+      MI.getOperand(0).setReg(X86::ESP);
+      MI.getOperand(1).setReg(X86::ESP);
       resetRXBasedOnRZP(X86::RSP, MBB, MBBI, TII, DL);
       return true;
     }
@@ -341,11 +369,9 @@ bool X86SGXASLR::enforceRSPGreatOrEqualtoR15(MachineBasicBlock &MBB,
          before:
            lea  disp32(base, index, scale), %esp
          after:
-           lea  disp32(base, index, scale), %rsp
+           lea  disp32(base, index, scale), %esp
            resetRXBasedOnRZP
       */
-      MI.getOperand(0).setReg(X86::RSP);
-      MI.setDesc(TII->get(X86::LEA64r));
       addedBundleHeader = MBBI;
       resetRXBasedOnRZP(X86::RSP, MBB, MBBI, TII, DL);
       return true;
@@ -360,24 +386,23 @@ bool X86SGXASLR::enforceRSPGreatOrEqualtoR15(MachineBasicBlock &MBB,
      before:
        mov  %eax, %esp or mov  %rax, %rsp
      after:
-       mov  %rax, %rsp
+       mov  %eax, %esp
        resetRXBasedOnRZP
   */
-  if (Opc == X86::MOV32rr) {
-    MI.getOperand(0).setReg(X86::RSP);
-    MI.getOperand(1).setReg(getX86SubSuperRegister(
-          MI.getOperand(1).getReg(), 64, false));
-    MI.setDesc(TII->get(X86::MOV64rr));
-  }
   if (Opc == X86::MOV64rr) {
+    MI.getOperand(0).setReg(X86::ESP);
+    MI.getOperand(1).setReg(getX86SubSuperRegister(
+          MI.getOperand(1).getReg(), 32, false));
+    MI.setDesc(TII->get(X86::MOV32rr));
+    Opc = X86::MOV32rr;
+  }
+  if (Opc == X86::MOV32rr) {
     addedBundleHeader = MBBI;
     resetRXBasedOnRZP(X86::RSP, MBB, MBBI, TII, DL);
     return true;
   }
 
-  if (Opc == X86::MOV32rm) {
-    MI.getOperand(0).setReg(X86::RSP);
-    MI.setDesc(TII->get(X86::MOV64rm));
+  if (Opc == X86::MOV32rm || Opc == X86::MOV64rm) {
     addedBundleHeader = MBBI;
     resetRXBasedOnRZP(X86::RSP, MBB, MBBI, TII, DL);
     return true;
@@ -455,16 +480,15 @@ bool X86SGXASLR::enforceDSTMemGreatOrEqualtoR15(MachineBasicBlock &MBB,
       before:
        mov  src, (base)
       after:
-       sub  %r15, %base
-       mov  %base-lower, %base-lower
+       sub  %r15d, %base-lower
        mov  src, (%r15, %base, 1)
      */
     if (0) {// (IndexReg.getReg() == 0) {
       rX = BaseReg.getReg();
       unsigned rX32 = getX86SubSuperRegister(rX, 32, false);
       MachineInstr *subMI
-        = BuildMI(MBB, MBBI, DL, TII->get(X86::SUB64rr), rX).addReg(rX).addReg(X86::R15);
-      BuildMI(MBB, MBBI, DL, TII->get(X86::MOV32rr)).addReg(rX32).addReg(rX32);
+        = BuildMI(MBB, MBBI, DL, TII->get(X86::SUB32rr), rX32).addReg(rX32)
+        .addReg(X86::R15D);
       head = subMI;
     } else {
       /*
@@ -472,8 +496,7 @@ bool X86SGXASLR::enforceDSTMemGreatOrEqualtoR15(MachineBasicBlock &MBB,
          mov  src, disp(base, index, scale)
         after:
          lea  disp(base, index, scale), %r13
-         sub  %r15, %r13
-         mov  %r13d, %r13d
+         sub  %r15d, %r13d
          mov  src, (%r15, %r13, 1)
        */
       rX = X86::R13;
@@ -484,10 +507,8 @@ bool X86SGXASLR::enforceDSTMemGreatOrEqualtoR15(MachineBasicBlock &MBB,
         .addOperand(Disp).addReg(SegmentReg.getReg());
       head = leaMI;
 
-      BuildMI(MBB, MBBI, DL, TII->get(X86::SUB64rr), X86::R13)
-        .addReg(X86::R13).addReg(X86::R15);
-
-      BuildMI(MBB, MBBI, DL, TII->get(X86::MOV32rr)).addReg(X86::R13D).addReg(X86::R13D);
+      BuildMI(MBB, MBBI, DL, TII->get(X86::SUB32rr), X86::R13D)
+        .addReg(X86::R13D).addReg(X86::R15D);
     }
 
     MachineInstrBuilder tmp = BuildMI(MBB, MBBI, DL, MI.getDesc());
@@ -538,8 +559,7 @@ bool X86SGXASLR::enforceRBPGreatOrEqualtoR15(MachineBasicBlock &MBB,
        mov  %rX, %rbp
       after:
        mov  %rX, %rbp
-       sub  %r15, %rbp
-       mov  %ebp, %ebp
+       sub  %r15d, %ebp
        lea  (%rbp, %r15, 1), %rbp
        */
     addedBundleHeader = MBBI;
@@ -590,17 +610,15 @@ bool X86SGXASLR::alignedControlNotToOCALL(MachineBasicBlock &MBB,
       unsigned rX32 = getX86SubSuperRegister(rX, 32, false);
 
       /*
-         and  $-32, %rX
-         sub  %r14, %rX
-         mov  %eX, %eX
+         and  $-32, %rX32
+         sub  %r14d, %rX32
          lea  (%rX, %r14, 1), %rX
          jmp  *%rX  --> MBBI
        */
       MachineInstr *andMI =
-        BuildMI(MBB, MBBI, DL, TII->get(X86::AND64ri8), rX).addReg(rX).addImm(-32);
+        BuildMI(MBB, MBBI, DL, TII->get(X86::AND32ri8), rX32).addReg(rX32).addImm(-32);
       MachineBasicBlock::iterator ANDI = andMI;
-      BuildMI(MBB, MBBI, DL, TII->get(X86::SUB64rr), rX).addReg(rX).addReg(X86::R14);
-      BuildMI(MBB, MBBI, DL, TII->get(X86::MOV32rr)).addReg(rX32).addReg(rX32);
+      BuildMI(MBB, MBBI, DL, TII->get(X86::SUB32rr), rX32).addReg(rX32).addReg(X86::R14D);
       BuildMI(MBB, MBBI, DL, TII->get(X86::LEA64r)).addReg(rX)
         .addReg(rX).addImm(1).addReg(X86::R14).addImm(0).addReg(0);
 
@@ -619,11 +637,10 @@ bool X86SGXASLR::alignedControlNotToOCALL(MachineBasicBlock &MBB,
        retq
     after:
        popq %r13
-       and  $-32, %r13
-       sub  %r14, %r13
-       mov  %r13d, %r13d
+       and  $-32, %r13d
+       sub  %r14d, %r13d
        lea  (%r13, %r14, 1), %r13
-       jmpq %r13
+       jmpq *%r13
   if (Opc == X86::RETIL || Opc == X86::RETIQ || Opc == X86::RETL || Opc == X86::RETQ) {
     if (isEnclaveMain) {
       MI.eraseFromParent();
@@ -635,9 +652,9 @@ bool X86SGXASLR::alignedControlNotToOCALL(MachineBasicBlock &MBB,
       MachineInstr *popMI = BuildMI(MBB, MBBI, DL, TII->get(X86::POP64r)).addReg(X86::R13);
       MachineBasicBlock::iterator POPI = popMI;
 
-      BuildMI(MBB, MBBI, DL, TII->get(X86::AND64ri8), X86::R13).addReg(X86::R13).addImm(-32);
-      BuildMI(MBB, MBBI, DL, TII->get(X86::SUB64rr), X86::R13).addReg(X86::R13).addReg(X86::R14);
-      BuildMI(MBB, MBBI, DL, TII->get(X86::MOV32rr)).addReg(X86::R13D).addReg(X86::R13D);
+      BuildMI(MBB, MBBI, DL, TII->get(X86::AND32ri8), X86::R13D).addReg(X86::R13D).addImm(-32);
+      BuildMI(MBB, MBBI, DL, TII->get(X86::SUB32rr), X86::R13D).addReg(X86::R13D)
+          .addReg(X86::R14D);
       BuildMI(MBB, MBBI, DL, TII->get(X86::LEA64r)).addReg(X86::R13)
         .addReg(X86::R13).addImm(1).addReg(X86::R14).addImm(0).addReg(0);
       MachineInstr *jmpMI = BuildMI(MBB, MBBI, DL, TII->get(X86::JMP64r)).addReg(X86::R13);

@@ -42,13 +42,13 @@ LIBSSL = mbedtls/libmbedtls.a
 $(LIBSSL):
 	$(MAKE) -C mbedtls
 
+LIBNBENCH = nbench/nbench.a
 nben: program $(LIBNBENCH)
 	cp nbench/*.o objs
 	rm objs/in_enclave_test.o
 	ls objs/*.o > list
 	cat list | ./tools/linker nben
 
-LIBNBENCH = nbench/nbench.a
 $(LIBNBENCH):
 	$(MAKE) -C nbench nbench.a
 
@@ -88,3 +88,4 @@ clean-all:
 		tools/linker lib/*.o
 	$(MAKE) -C nbench clean
 	$(MAKE) -C mbedtls clean
+	$(MAKE) -C musl-libc clean

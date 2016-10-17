@@ -15,4 +15,4 @@
 !*.sh
 !*.s
 !*.pem
-ocall_type.h
+!ocall_type.h

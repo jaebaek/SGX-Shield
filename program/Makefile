@@ -31,16 +31,16 @@ $(LIBC):
 	(cd musl-libc; ./configure)
 	make -C musl-libc lib/libc.a
 
+LIBSSL = mbedtls/libmbedtls.a
+$(LIBSSL):
+	$(MAKE) -C mbedtls
+
 https: program $(LIBSSL)
 	cp mbedtls/*.o objs
 	echo '' > objs/in_enclave_test.o
 	rm objs/in_enclave_test.o
 	ls objs/*.o > list
 	cat list | ./tools/linker https
-
-LIBSSL = mbedtls/libmbedtls.a
-$(LIBSSL):
-	$(MAKE) -C mbedtls
 
 LIBNBENCH = nbench/nbench.a
 nben: program $(LIBNBENCH)

@@ -157,6 +157,15 @@ void print_error_message(sgx_status_t ret)
         printf("Error: Unexpected error occurred.\n");
 }
 
+/* Ocall functions */
+void ocall_print_string(const char *str)
+{
+    /* Proxy/Bridge will check the length and null-terminate
+     * the input string to prevent buffer overflow.
+     */
+    printf("%s", str);
+}
+
 /* For attack demo */
 #include "attack.h"
 static unsigned long base;
@@ -222,7 +231,7 @@ int main(int argc, char *argv[])
     }
 
     /* Call enclave main */
-    base = *(unsigned long *)((unsigned long )sgx_create_enclave+0x212098);
+    //base = *(unsigned long *)((unsigned long )sgx_create_enclave+0x212098);
     enclave_main(eid);
 
     /* Destroy the enclave */

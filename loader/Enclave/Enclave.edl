@@ -42,6 +42,7 @@ enclave {
      *  [string]: specifies 'str' is a NULL terminated buffer.
      */
     untrusted {
+        void ocall_print_string([in, string] const char *str);
         void ocall_sgx_push_gadget(unsigned long gadget);
         clock_t ocall_sgx_clock();
         time_t ocall_sgx_time([in, out, size=8] time_t *t);

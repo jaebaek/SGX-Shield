@@ -1,0 +1,6 @@
+[submodule "linux-sgx-driver"]
+	path = linux-sgx-driver
+	url = https://github.com/intel/linux-sgx-driver.git
+[submodule "linux-sgx"]
+	path = linux-sgx
+	url = https://github.com/intel/linux-sgx.git

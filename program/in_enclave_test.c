@@ -1,4 +1,6 @@
-#include "benchmark/bm_malloc_simple.c"
+//#include "benchmark/bm_malloc_simple.c"
+#include "benchmark/bm_hello.c"
+//#include "attack/sample0_jump_to_func.c"
 
 /* If nothing is executed */
 //__asm__ __volatile__ (

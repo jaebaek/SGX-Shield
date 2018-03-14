@@ -236,12 +236,12 @@ static unsigned char find_special_symbol(const char* name, const size_t i)
     if (STR_EQUAL(name, "dep.bdr\0", 8)) {
         symtab[i].st_value = (Elf64_Addr)_SGXDATA_BASE;
         symtab[i].st_size = 0;
-        dlog(&strtab[symtab[i].st_name]);
+        dlog("%s", &strtab[symtab[i].st_name]);
         return 1;
     } else if (STR_EQUAL(name, "ocall.bdr\0", 10)) {
         symtab[i].st_value = (Elf64_Addr)_SGXCODE_BASE;
         symtab[i].st_size = 0;
-        dlog(&strtab[symtab[i].st_name]);
+        dlog("%s", &strtab[symtab[i].st_name]);
         return 1;
     } else if (STR_EQUAL(name, "sgx_ocall.loader\0", 14)) {
         symtab[i].st_value = (Elf64_Addr)do_sgx_ocall;
@@ -304,7 +304,7 @@ static void load(void)
                 }
             }
         }
-        dlog("sym %04u %08lx", i, (unsigned long)symtab[i].st_value);
+        dlog("sym %04u/%d %08lx", i, n_symtab, (unsigned long)symtab[i].st_value);
 #if PTRACE
         find_ptrace_target(&strtab[symtab[i].st_name], i);
 #endif
@@ -354,6 +354,7 @@ static void relocate(void)
 
 void enclave_main()
 {
+    pr_progress("hello from enclave_main!");
     void (*entry)();
     dlog("program at %p (%lx)", program, program_size);
     dlog(".sgxcode = %p", _SGXCODE_BASE);
@@ -368,12 +369,15 @@ void enclave_main()
 
     validate_ehdr();
     update_reltab();
+    pr_progress("loading");
     load();
+    pr_progress("relocating");
     relocate();
 
     entry = (void (*)())(main_sym->st_value);
     dlog("main: %p", entry);
 
+    pr_progress("entering");
 #if PTRACE
     run_with_ptrace(entry);
 #else
@@ -381,4 +385,5 @@ void enclave_main()
     entry();
     __asm__ __volatile__( "pop %%r15\n" "pop %%r14\n" "pop %%r13\n" ::);
 #endif
+    pr_progress("returning");
 }

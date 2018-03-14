@@ -19,7 +19,7 @@ Build and run
 ###Build LLVM
 ~~~~~{.sh}
 $ cd (rootdir)/llvm
-$ mkdir build
+$ mkdir build && cd build
 $ cmake -G 'Unix Makefiles' ../ -DCMAKE_BUILD_TYPE=Debug -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_TARGETS_TO_BUILD="X86"
 $ make  # or make -jN
 ~~~~~
@@ -38,12 +38,14 @@ $ cd (rootdir)/program/
 $ make CC="`pwd`/../llvm/build/bin/clang -fPIC -fno-asynchronous-unwind-tables -fno-jump-tables"
 ~~~~~
 
+**note:** include desired enclave program in `(rootdir)/program/in_enclave_test.c`.
 
 ###Run in an enclave
 ~~~~~{.sh}
 $ cp (rootdir)/program/program (rootdir)/loader
 $ cd (rootdir)/loader/
-$ make SGX_MODE=HW SGX_DEBUG=1
+$ make SGX_MODE=HW SGX_DEBUG=1 DEBUG=ON RAND=ON # SGX_SDK=/path/to/local/sdk/sgxsdk
+$ ./app
 ~~~~~
 
 

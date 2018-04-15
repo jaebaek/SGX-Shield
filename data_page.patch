@@ -1,0 +1,44 @@
+diff --git a/sdk/sign_tool/SignTool/manage_metadata.cpp b/sdk/sign_tool/SignTool/manage_metadata.cpp
+index 33e8455..36c4ced 100644
+--- a/sdk/sign_tool/SignTool/manage_metadata.cpp
++++ b/sdk/sign_tool/SignTool/manage_metadata.cpp
+@@ -541,7 +541,7 @@ bool CMetadata::build_layout_table()
+ 
+ 
+     // thread context memory layout
+-    // guard page | stack | TCS | SSA | guard page | TLS
++    // guard page | stack | TCS | SSA | guard page | TLS | guard page | data
+     thread_start = m_layouts.size();
+     //ulitity tcs
+     // guard page
+@@ -682,6 +682,30 @@ bool CMetadata::build_layout_table()
+         }
+     }
+ 
++    //----> Jaebaek: code and data pages for the enclave program
++    /*
++    // guard page
++    layouts.push_back(guard_page);
++
++    // .sgxcode
++    layout.entry.id = LAYOUT_ID_HEAP;
++    layout.entry.page_count = (uint32_t)(0x2000000 >> SE_PAGE_SHIFT);
++    layout.entry.attributes = ADD_PAGE_ONLY; // ADD_EXTEND_PAGE;
++    layout.entry.si_flags = SI_FLAGS_RW | SI_FLAG_X;
++    layouts.push_back(layout);
++    */
++
++    // guard page
++    m_layouts.push_back(guard_page);
++
++    // .sgxdata
++    layout.entry.id = LAYOUT_ID_HEAP_MIN;
++    layout.entry.page_count = (uint32_t)(0x2000000 >> SE_PAGE_SHIFT);
++    layout.entry.attributes = ADD_PAGE_ONLY; // ADD_EXTEND_PAGE;
++    layout.entry.si_flags = SI_FLAGS_RW;
++    m_layouts.push_back(layout);
++    //----<
++
+     // update layout entries
+     if(false == update_layout_entries())
+     {

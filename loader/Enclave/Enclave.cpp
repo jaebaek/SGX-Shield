@@ -28,10 +28,11 @@ void printf(const char *fmt, ...)
     va_end(ap);
     ocall_print_string(buf);
 }
-#define dlog(...) printf(__VA_ARGS__)
+#define dlog(fmt, ...) printf(fmt "\n", __VA_ARGS__ )
 #else
 #define dlog(...)
 #endif
+#define pr_progress(s) dlog("\n=== sec_loader: %s ===", s)
 
 extern char __elf_end;          /* defined in the linker script */
 #define _HEAP_BASE (((addr_t)&__elf_end + 0xfff) & ~0xfff)

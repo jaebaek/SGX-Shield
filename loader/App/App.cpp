@@ -215,6 +215,12 @@ extern "C" void print_attack_msg(const char **msg) {
 
 #include "ocall.cpp"
 
+#ifdef LD_DEBUG
+    #define log(s) puts("app: " s)
+#else
+    #define log(s)
+#endif
+
 /* Application entry */
 int main(int argc, char *argv[])
 {
@@ -223,18 +229,18 @@ int main(int argc, char *argv[])
     int updated = 0;
     sgx_enclave_id_t eid = 0;
 
-    /* Initialize the enclave */
+    log("initialize the enclave");
     ret = sgx_create_enclave(ENCLAVE_FILENAME, SGX_DEBUG_FLAG, &token, &updated, &eid, NULL);
     if (ret != SGX_SUCCESS) {
         print_error_message(ret);
         return -1;
     }
 
-    /* Call enclave main */
+    log("call enclave main");
     //base = *(unsigned long *)((unsigned long )sgx_create_enclave+0x212098);
     enclave_main(eid);
 
-    /* Destroy the enclave */
+    log("destroy the enclave");
     sgx_destroy_enclave(eid);
     return 0;
 }
